@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fast Lot Size Calculator</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 16px;
+      margin: 0;
+      background: #121212;
+      color: #e0e0e0;
+    }
+    .card {
+      background: #1e1e1e;
+      border-radius: 12px;
+      padding: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    h2 { margin-top: 0; text-align: center; font-size: 1.2rem; color: #fff; }
+    label { display: block; margin-top: 12px; font-size: 0.85rem; color: #aaa; }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      margin-top: 4px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #2a2a2a;
+      color: #fff;
+      font-size: 1rem;
+    }
+    .btn-group { display: flex; gap: 8px; margin-top: 6px; }
+    .btn-group button {
+      flex: 1;
+      padding: 10px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .btn-group button:active { background: #00e676; color: #000; }
+    
+    .trade-toggle { display: flex; gap: 8px; margin-top: 6px; }
+    .trade-toggle button {
+      flex: 1;
+      padding: 12px;
+      font-weight: bold;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      font-size: 1rem;
+      opacity: 0.4;
+      transition: all 0.2s ease;
+    }
+    .trade-toggle button.active-buy {
+      background: #00e676;
+      color: #000;
+      opacity: 1;
+      border-color: #00e676;
+    }
+    .trade-toggle button.active-sell {
+      background: #ff5252;
+      color: #fff;
+      opacity: 1;
+      border-color: #ff5252;
+    }
+
+    .result {
+      margin-top: 20px;
+      padding: 16px;
+      background: #262626;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid #333;
+    }
+    .lot-val { font-size: 2.2rem; color: #00e676; font-weight: bold; margin: 8px 0; }
+    .risk-val { font-size: 0.85rem; color: #bbb; margin-bottom: 6px; }
+    .tp-val { font-size: 0.85rem; color: #00e676; margin-bottom: 12px; font-weight: bold; }
+    
+    .copy-btn {
+      width: 100%;
+      padding: 12px;
+      background: #00e676;
+      color: #000;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .copy-btn.copied {
+      background: #29b6f6;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>⚡ 1-Tap Lot Size Calculator</h2>
+
+  <label>Trade Direction</label>
+  <div class="trade-toggle">
+    <button id="btnBuy" class="active-buy" onclick="setDirection('BUY')">BUY 📈</button>
+    <button id="btnSell" onclick="setDirection('SELL')">SELL 📉</button>
+  </div>
+  
+  <label>Account Balance ($)</label>
+  <input type="number" id="balance" value="1000" oninput="calculate()">
+
+  <label>Risk (%)</label>
+  <div class="btn-group">
+    <button onclick="setRisk(0.5)">0.5%</button>
+    <button onclick="setRisk(1)">1.0%</button>
+    <button onclick="setRisk(2)">2.0%</button>
+    <button onclick="setRisk(3)">3.0%</button>
+  </div>
+  <input type="number" id="risk" value="1" step="0.1" oninput="calculate()">
+
+  <label>Asset Class</label>
+  <select id="asset" onchange="calculate()">
+    <option value="10">Forex Standard Pairs ($10/pip)</option>
+    <option value="10">Gold XAUUSD ($10 per $1.00 move)</option>
+    <option value="1">Silver XAGUSD ($50 per $1.00 move)</option>
+    <option value="1">Forex Micro ($1/pip)</option>
+  </select>
+
+  <label>Entry Price</label>
+  <input type="number" id="entry" value="2400.00" step="any" oninput="calculate()">
+
+  <label>Quick Stop Loss Presets (Pips)</label>
+  <div class="btn-group">
+    <button onclick="setSLPreset(10)">10 Pips</button>
+    <button onclick="setSLPreset(20)">20 Pips</button>
+    <button onclick="setSLPreset(50)">50 Pips</button>
+  </div>
+
+  <label>Stop Loss Price</label>
+  <input type="number" id="sl" value="2398.00" step="any" oninput="calculate()">
+
+  <label>Quick Take Profit Target (RR)</label>
+  <div class="btn-group">
+    <button onclick="setRRPreset(2)">1:2 RR</button>
+    <button onclick="setRRPreset(3)">1:3 RR</button>
+    <button onclick="setRRPreset(5)">1:5 RR</button>
+  </div>
+
+  <label>Take Profit Price</label>
+  <input type="number" id="tp" value="2404.00" step="any" oninput="calculate()">
+
+  <div class="result">
+    <div>Recommended Lot Size:</div>
+    <div class="lot-val" id="lotOutput">0.50</div>
+    <div class="risk-val" id="riskOutput">Risk: $10.00 | Distance: 2.00 pts (20 pips)</div>
+    <div class="tp-val" id="tpOutput">Potential Reward: $20.00 | RR: 1:2.0</div>
+    <button id="copyBtn" class="copy-btn" onclick="copyLotSize()">📋 Copy Lot Size</button>
+  </div>
+</div>
+
+<script>
+  let currentDirection = 'BUY';
+  let currentSLPips = 20;
+
+  function setDirection(dir) {
+    currentDirection = dir;
+    const btnBuy = document.getElementById('btnBuy');
+    const btnSell = document.getElementById('btnSell');
+
+    if (dir === 'BUY') {
+      btnBuy.className = 'active-buy';
+      btnSell.className = '';
+    } else {
+      btnBuy.className = '';
+      btnSell.className = 'active-sell';
+    }
+    setSLPreset(currentSLPips);
+  }
+
+  function setRisk(val) {
+    document.getElementById('risk').value = val;
+    calculate();
+  }
+
+  function setSLPreset(pips) {
+    currentSLPips = pips;
+    const entry = parseFloat(document.getElementById('entry').value) || 0;
+    const distance = pips / 10;
+    
+    if (currentDirection === 'BUY') {
+      document.getElementById('sl').value = (entry - distance).toFixed(2);
+    } else {
+      document.getElementById('sl').value = (entry + distance).toFixed(2);
+    }
+    setRRPreset(2);
+  }
+
+  function setRRPreset(multiplier) {
+    const entry = parseFloat(document.getElementById('entry').value) || 0;
+    const sl = parseFloat(document.getElementById('sl').value) || 0;
+    const slDistance = Math.abs(entry - sl);
+
+    if (slDistance === 0) return;
+
+    const tpDistance = slDistance * multiplier;
+    if (currentDirection === 'BUY') {
+      document.getElementById('tp').value = (entry + tpDistance).toFixed(2);
+    } else {
+      document.getElementById('tp').value = (entry - tpDistance).toFixed(2);
+    }
+    calculate();
+  }
+
+  function calculate() {
+    const balance = parseFloat(document.getElementById('balance').value) || 0;
+    const riskPct = parseFloat(document.getElementById('risk').value) || 0;
+    const pipValue = parseFloat(document.getElementById('asset').value) || 10;
+    const entry = parseFloat(document.getElementById('entry').value) || 0;
+    const sl = parseFloat(document.getElementById('sl').value) || 0;
+    const tp = parseFloat(document.getElementById('tp').value) || 0;
+
+    const priceDiff = Math.abs(entry - sl);
+    if (priceDiff === 0) return;
+
+    const cashRisk = balance * (riskPct / 100);
+    const pips = priceDiff * 10;
+    const lots = cashRisk / (pips * (pipValue / 10));
+
+    const tpDiff = Math.abs(tp - entry);
+    const rrRatio = tpDiff > 0 ? (tpDiff / priceDiff).toFixed(1) : '0.0';
+    const potentialProfit = cashRisk * (tpDiff / priceDiff);
+
+    document.getElementById('lotOutput').innerText = lots.toFixed(2);
+    document.getElementById('riskOutput').innerText = 
+      `Risk: $${cashRisk.toFixed(2)} | SL Distance: ${(priceDiff).toFixed(2)} pts (${pips.toFixed(0)} pips)`;
+    document.getElementById('tpOutput').innerText = 
+      `Potential Reward: $${potentialProfit.toFixed(2)} | RR: 1:${rrRatio}`;
+  }
+
+  function copyLotSize() {
+    const lotValue = document.getElementById('lotOutput').innerText;
+    navigator.clipboard.writeText(lotValue).then(() => {
+      const copyBtn = document.getElementById('copyBtn');
+      copyBtn.innerText = '✓ Copied!';
+      copyBtn.classList.add('copied');
+      setTimeout(() => {
+        copyBtn.innerText = '📋 Copy Lot Size';
+        copyBtn.classList.remove('copied');
+      }, 1500);
+    });
+  }
+
+  calculate();
+</script>
+
+</body>
+  </html>
+  
